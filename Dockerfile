@@ -1,6 +1,6 @@
 # Passo 1: Use uma imagem oficial do Python como base.
 # A versão 'slim' é menor e ideal para produção.
-FROM python:3.13-slim
+FROM python:3.13
 
 # Passo 2: Defina o diretório de trabalho dentro do contêiner.
 WORKDIR /app

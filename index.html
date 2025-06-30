@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente Web para Servidor MCP</title>
+    <style>
+        body { font-family: sans-serif; background-color: #282c34; color: white; padding: 20px; }
+        h1 { color: #61dafb; }
+        textarea { width: 90%; height: 150px; display: block; margin-top: 10px; background-color: #333; color: white; border: 1px solid #666; padding: 10px; }
+        button { background-color: #61dafb; color: #282c34; border: none; padding: 10px 20px; margin-top: 10px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #88eaff; }
+        #resultado { margin-top: 20px; background-color: #20232a; padding: 15px; border-left: 4px solid #61dafb; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+
+    <h1>Cliente Web para Servidor MCP</h1>
+    <p>Use o campo abaixo para testar a ferramenta <strong>contar_frequencia_palavras</strong> do seu servidor.</p>
+
+    <label for="texto-input">Digite o texto para analisar:</label>
+    <textarea id="texto-input" placeholder="O sol brilha e o sol é amarelo..."></textarea>
+    
+    <button onclick="chamarFerramentaMcp()">Analisar Frequência</button>
+
+    <h2>Resultado:</h2>
+    <div id="resultado">Aguardando análise...</div>
+
+    <script>
+        // --- CONFIGURAÇÃO ---
+        // IMPORTANTE: Substitua pela URL do seu servidor implantado no Easypanel
+        const SERVER_URL = "http://outros-mcp-teste.nu7ixt.easypanel.host"; 
+        const MCP_ENDPOINT = `${SERVER_URL}/mcp`;
+
+        async function chamarFerramentaMcp() {
+            const resultadoDiv = document.getElementById('resultado');
+            const textoParaAnalisar = document.getElementById('texto-input').value;
+
+            if (!textoParaAnalisar) {
+                resultadoDiv.innerText = "Por favor, digite um texto para analisar.";
+                return;
+            }
+
+            resultadoDiv.innerText = "Enviando requisição para o servidor...";
+
+            // Montando o corpo da requisição no formato JSON-RPC 2.0 que o MCP usa
+            const corpoDaRequisicao = {
+                jsonrpc: "2.0",
+                id: 1, // Um ID de requisição qualquer
+                method: "tools/call", // O método para chamar uma ferramenta [cite: 1009]
+                params: {
+                    name: "contar_frequencia_palavras", // O nome da ferramenta que queremos usar
+                    arguments: {
+                        texto: textoParaAnalisar // Os argumentos da ferramenta
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(MCP_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(corpoDaRequisicao)
+                });
+
+                const data = await response.json();
+
+                // Processando a resposta do servidor
+                if (data.error) {
+                    resultadoDiv.innerText = `Erro retornado pelo servidor: ${data.error.message}`;
+                } else if (data.result && data.result.content && data.result.content[0].text) {
+                    resultadoDiv.innerText = data.result.content[0].text;
+                } else {
+                    resultadoDiv.innerText = "Resposta inesperada do servidor.";
+                    console.log(data);
+                }
+
+            } catch (error) {
+                resultadoDiv.innerText = `Erro de comunicação com o servidor. Verifique o console (F12) e a URL. \n\nErro: ${error}`;
+                console.error("Erro de fetch:", error);
+            }
+        }
+    </script>
+
+</body>
+</html>

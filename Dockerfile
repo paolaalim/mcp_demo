@@ -8,10 +8,10 @@ WORKDIR /app
 RUN pip install fastapi uvicorn
 
 # Copia APENAS o nosso novo arquivo de teste para o contêiner
-COPY teste_minimo.py .
+COPY servidor_web.py .
 
 # MUDANÇA 1: Expondo a nova porta
 EXPOSE 8000
 
 # MUDANÇA 2: Executando o servidor na nova porta
-CMD ["uvicorn", "teste_minimo:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "servidor_web:app", "--host", "0.0.0.0", "--port", "8000"]

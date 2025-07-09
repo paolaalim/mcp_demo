@@ -1,50 +1,66 @@
-# servidor_web.py (VERSÃO FINAL COM CORS PARA TESTE LOCAL)
+# servidor.py
 
 import re
 from collections import Counter
-from mcp.server.fastmcp.prompts import base
-from mcp.server.fastmcp import FastMCP, Context
-import asyncio
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware # IMPORTANTE: Importar o Middleware CORS
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# --- Criação das Aplicações ---
+# --- Modelos de Dados para a nossa API ---
+# Define a estrutura que o nosso frontend deve enviar
+class ToolRequest(BaseModel):
+    arguments: dict
+
+# --- Aplicação FastAPI ---
 app = FastAPI()
 
-# --- Configuração do CORS ---
-# Adicione esta secção para permitir que o seu frontend (rodando localmente)
-# possa fazer requisições para este servidor.
-origins = [
-    "null", # Necessário para permitir requisições de ficheiros locais (file://)
-    "http://localhost",
-    "http://localhost:8080",
-]
-
+# Configuração do CORS para permitir que o nosso frontend se conecte
+# ATENÇÃO: Em produção real, seria mais restrito, mas para o Easypanel e testes, "*" funciona.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # Permite todos os métodos (GET, POST, etc.)
-    allow_headers=["*"], # Permite todos os cabeçalhos
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-mcp = FastMCP("MeuServidorMCP", stateless_http=True)
-
-# --- Endpoint de Health Check ---
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "Servidor MCP está saudável!"}
-
-# --- Montagem da Aplicação MCP ---
-app.mount("/mcp", mcp.streamable_http_app())
-
-# --- Lógica do Servidor MCP (Ferramentas, etc.) ---
-# O resto do seu código de ferramentas e prompts permanece exatamente o mesmo.
-@mcp.tool()
+# --- Nossas Ferramentas ---
+# As funções são as mesmas, mas sem o decorador @mcp.tool()
 def contar_frequencia_palavras(texto: str) -> str:
     """Conta a frequência de cada palavra em um texto fornecido."""
     palavras = re.findall(r'\b\w+\b', texto.lower())
-    if not palavras: return "Nenhuma palavra encontrada no texto."
+    if not palavras:
+        return "Nenhuma palavra encontrada no texto."
     contagem = Counter(palavras)
     resultado_str = ", ".join([f"{palavra}: {freq}" for palavra, freq in contagem.most_common()])
     return f"Frequência de palavras: {resultado_str}"
+
+def add(a: int, b: int) -> int:
+    """Soma dois números inteiros."""
+    return a + b
+
+# Um "registo" manual das nossas ferramentas
+ferramentas_disponiveis = {
+    "contar_frequencia": contar_frequencia_palavras,
+    "somar": add,
+}
+
+# --- Endpoints da API ---
+@app.get("/")
+def health_check():
+    """Endpoint de saúde para o Easypanel saber que o serviço está no ar."""
+    return {"status": "ok"}
+
+@app.post("/tool/{tool_name}")
+def execute_tool(tool_name: str, request: ToolRequest):
+    """Endpoint principal que recebe o nome da ferramenta e os seus argumentos."""
+    if tool_name not in ferramentas_disponiveis:
+        raise HTTPException(status_code=404, detail="Ferramenta não encontrada")
+    
+    try:
+        ferramenta = ferramentas_disponiveis[tool_name]
+        # Executa a função da ferramenta com os argumentos recebidos
+        resultado = ferramenta(**request.arguments)
+        return {"result": resultado}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao executar a ferramenta: {e}")

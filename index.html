@@ -2,49 +2,40 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Cliente Web para Servidor MCP</title>
-    <style>
-        body { font-family: sans-serif; background-color: #282c34; color: white; padding: 20px; }
-        h1 { color: #61dafb; }
-        textarea { width: 90%; height: 150px; display: block; margin-top: 10px; background-color: #333; color: white; border: 1px solid #666; padding: 10px; }
-        button { background-color: #61dafb; color: #282c34; border: none; padding: 10px 20px; margin-top: 10px; cursor: pointer; font-size: 16px; }
-        #resultado { margin-top: 20px; background-color: #20232a; padding: 15px; border-left: 4px solid #61dafb; white-space: pre-wrap; word-wrap: break-word; }
-    </style>
+    <title>Cliente para Servidor de Ferramentas</title>
 </head>
 <body>
-    <h1>Cliente Web para Servidor MCP (Rodando Localmente)</h1>
-    <textarea id="texto-input" placeholder="O sol brilha e o sol é amarelo..."></textarea>
-    <button onclick="chamarFerramentaMcp()">Analisar Frequência de Palavras</button>
-    <h2>Resultado:</h2>
-    <div id="resultado">Aguardando análise...</div>
+    <h1>Cliente para o seu Servidor</h1>
+
+    <h3>Testar Ferramenta: Contar Frequência</h3>
+    <textarea id="texto-input" placeholder="Digite um texto..."></textarea>
+    <button onclick="chamarContador()">Analisar Frequência</button>
+    <p>Resultado: <strong id="resultado-contador"></strong></p>
 
     <script>
-        // Apontando para o nosso servidor local que está a rodar na porta 8000
-        const SERVER_URL = "http://127.0.0.1:8000"; 
-        const MCP_ENDPOINT = `${SERVER_URL}/mcp`;
+        // Esta variável será o link que o Easypanel lhe dará
+        const API_BASE_URL = "http://SEU_LINK_DO_EASYPANEL_AQUI";
 
-        async function chamarFerramentaMcp() {
-            // ... (o resto do script permanece o mesmo de antes) ...
-            const resultadoDiv = document.getElementById('resultado');
-            const textoParaAnalisar = document.getElementById('texto-input').value;
-            resultadoDiv.innerText = "Enviando requisição...";
-
-            const corpoDaRequisicao = {
-                jsonrpc: "2.0", id: 1, method: "tools/call",
-                params: { name: "contar_frequencia_palavras", arguments: { texto: textoParaAnalisar } }
-            };
+        async function chamarContador() {
+            const resultadoDiv = document.getElementById('resultado-contador');
+            const texto = document.getElementById('texto-input').value;
+            resultadoDiv.innerText = "Processando...";
 
             try {
-                const response = await fetch(MCP_ENDPOINT, {
+                const response = await fetch(`${API_BASE_URL}/tool/contar_frequencia`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(corpoDaRequisicao)
+                    body: JSON.stringify({
+                        arguments: { texto: texto }
+                    })
                 });
+
                 const data = await response.json();
-                if (data.error) {
-                    resultadoDiv.innerText = `Erro: ${data.error.message}`;
+
+                if (response.ok) {
+                    resultadoDiv.innerText = data.result;
                 } else {
-                    resultadoDiv.innerText = data.result.content[0].text;
+                    resultadoDiv.innerText = `Erro: ${data.detail}`;
                 }
             } catch (error) {
                 resultadoDiv.innerText = `Erro de comunicação: ${error}`;
